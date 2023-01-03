@@ -1,5 +1,6 @@
 package com.mathew.user.service;
 
+import com.mathew.user.config.ConfigProperties;
 import com.mathew.user.entity.Hotel;
 import com.mathew.user.entity.Rating;
 import com.mathew.user.entity.User;
@@ -18,6 +19,9 @@ public class UserServiceImpl implements UserService{
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private ConfigProperties configProperties;
 
     @Autowired
     private RestTemplate restTemplate;
@@ -39,12 +43,12 @@ public class UserServiceImpl implements UserService{
     public User get(String id) {
         Optional<User> byId = Optional.ofNullable(userRepository.findById(id).orElseThrow(() -> new UserNotFoundException("No Records Found. Invalid userId: " + id)));
         User userReturned =byId.get();
-        Rating[] userRatings = restTemplate.getForObject("http://localhost:8012/api/ratings/all/byUserId/"+userReturned.getId(), Rating[].class);
+        Rating[] userRatings = restTemplate.getForObject(configProperties.getRatingservice()+userReturned.getId(), Rating[].class);
 
         List<Rating> userRatingsDone = Arrays.stream(userRatings).collect(Collectors.toList());
         userRatingsDone.stream().map(rating-> {
 //http://localhost:8011/api/hotels/17fd148c-0ec9-4836-bb52-4cd75cbd5eac
-            ResponseEntity<Hotel> forEntity = restTemplate.getForEntity("http://localhost:8011/api/hotels/" + rating.getHotelId(), Hotel.class);
+            ResponseEntity<Hotel> forEntity = restTemplate.getForEntity(configProperties.getHotelservice() + rating.getHotelId(), Hotel.class);
             rating.setHotel(forEntity.getBody());
             return rating;
         }).collect(Collectors.toList());
