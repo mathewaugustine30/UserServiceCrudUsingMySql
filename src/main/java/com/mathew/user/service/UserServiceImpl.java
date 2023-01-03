@@ -1,13 +1,12 @@
 package com.mathew.user.service;
 
-import com.mathew.user.config.ConfigProperties;
-import com.mathew.user.entity.Hotel;
 import com.mathew.user.entity.Rating;
 import com.mathew.user.entity.User;
 import com.mathew.user.exception.UserNotFoundException;
+import com.mathew.user.external.services.HotelService;
+import com.mathew.user.external.services.RatingService;
 import com.mathew.user.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
@@ -21,10 +20,10 @@ public class UserServiceImpl implements UserService{
     private UserRepository userRepository;
 
     @Autowired
-    private ConfigProperties configProperties;
+    private HotelService hotelService;
 
     @Autowired
-    private RestTemplate restTemplate;
+    private RatingService ratingService;
 
     @Override
     public User save(User user) {
@@ -43,13 +42,10 @@ public class UserServiceImpl implements UserService{
     public User get(String id) {
         Optional<User> byId = Optional.ofNullable(userRepository.findById(id).orElseThrow(() -> new UserNotFoundException("No Records Found. Invalid userId: " + id)));
         User userReturned =byId.get();
-        Rating[] userRatings = restTemplate.getForObject(configProperties.getRatingservice()+userReturned.getId(), Rating[].class);
-
+        Rating[] userRatings = ratingService.getUserRatings(userReturned.getId());
         List<Rating> userRatingsDone = Arrays.stream(userRatings).collect(Collectors.toList());
         userRatingsDone.stream().map(rating-> {
-//http://localhost:8011/api/hotels/17fd148c-0ec9-4836-bb52-4cd75cbd5eac
-            ResponseEntity<Hotel> forEntity = restTemplate.getForEntity(configProperties.getHotelservice() + rating.getHotelId(), Hotel.class);
-            rating.setHotel(forEntity.getBody());
+            rating.setHotel(hotelService.getHotelDetails(rating.getHotelId()));
             return rating;
         }).collect(Collectors.toList());
         userReturned.setRatings(userRatingsDone);
